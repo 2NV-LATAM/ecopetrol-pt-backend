@@ -6,3 +6,6 @@ services:
       context: ./fastapi-app
     ports:
       - "80:80"
+    volumes:
+      - "./fastapi-app/app:/app"
+    command: /start-reload.sh

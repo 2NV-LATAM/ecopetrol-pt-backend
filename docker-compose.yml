@@ -1,0 +1,11 @@
+version: "3"
+services:
+  fastapi-app:
+    image: "image/ecopetrol-pt-backend"
+    build:
+      context: ./fastapi-app
+    ports:
+      - "80:80"
+    volumes:
+      - "./fastapi-app/app:/app"
+    command: /start-reload.sh

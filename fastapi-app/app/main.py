@@ -1,29 +1,64 @@
 from fastapi import FastAPI, HTTPException
+import json
 import requests
 
+
 app = FastAPI()
+
+
+ECOPETROL_SHARES_URL = (
+    "https://www.google.com/async/finance_wholepage_price_updates?ei="
+    f"aQ9vXczCHYq45gLJzZPYDA&yv=3&async=mids:%2Fg%2F11dx9gnmzd,currencies:,"
+    "_fmt:jspb"
+)
+
+BRENT_ENPOINTS = ["latest", "past_day", "past_week", "past_month", "past_year"]
+BRENT_URL = "https://api.oilpriceapi.com/v1/prices/"
 
 WEATHER_URL = (
     "http://api.openweathermap.org/data/2.5/weather"
     "?appid=8581e5f4667acea0a6eefd7b19547122"
 )
 
-BRENT_URL = "https://api.oilpriceapi.com/v1/prices/"
-BRENT_ENPOINTS = ["latest", "past_day", "past_week", "past_month", "past_year"]
 
+@app.get("/ecopetrol_shares/")
+def get_ecopetrol_shares():
+    ecopetrol_shares_api_response = requests.get(
+        ECOPETROL_SHARES_URL
+    )
 
-@app.get("/weather/")
-def get_weather(lat: float, lon: float):
-    weather_url_request = f"{WEATHER_URL}&lat={lat}&lon={lon}"
+    if ecopetrol_shares_api_response.status_code != 200:
+        raiseException(
+            status_code=ecopetrol_shares_api_response.status_code
+        )
 
-    weather_api_response = requests.get(weather_url_request)
-    if weather_api_response.status_code != 200:
-        if weather_api_response.status_code == 400:
-            return weather_api_response.json()
-        else:
-            raiseException(status_code=weather_api_response.status_code)
+    ecopetrol_shares_api_response = ecopetrol_shares_api_response.text.replace(
+        ')]}\'',
+        ''
+    )
+    ecopetrol_shares_api_response = json.loads(ecopetrol_shares_api_response)
 
-    return weather_api_response.json()
+    root_json_response = ecopetrol_shares_api_response[
+        "PriceUpdate"
+    ][0][0][0]
+
+    closed_date = root_json_response[15][4]
+    price = root_json_response[17][3]
+    price_after_closing = root_json_response[15][0]
+    variation = root_json_response[17][5]
+    variation_after_closing = root_json_response[15][1]
+    variation_percent = root_json_response[17][6]
+    variation_percent_after_closing = root_json_response[15][2]
+
+    return {
+        "closed_date": closed_date,
+        "price": price,
+        "price_after_closing": price_after_closing,
+        "variation": variation,
+        "variation_after_closing": variation_after_closing,
+        "variation_percent": variation_percent,
+        "variation_percent_after_closing": variation_percent_after_closing
+    }
 
 
 @app.get("/brent/{endpoint}")
@@ -46,6 +81,20 @@ def get_brent(endpoint: str):
         raiseException(status_code=brent_api_response.status_code)
 
     return brent_api_response.json()
+
+
+@app.get("/weather/")
+def get_weather(lat: float, lon: float):
+    weather_url_request = f"{WEATHER_URL}&lat={lat}&lon={lon}"
+
+    weather_api_response = requests.get(weather_url_request)
+    if weather_api_response.status_code != 200:
+        if weather_api_response.status_code == 400:
+            return weather_api_response.json()
+        else:
+            raiseException(status_code=weather_api_response.status_code)
+
+    return weather_api_response.json()
 
 
 def raiseException(status_code):
